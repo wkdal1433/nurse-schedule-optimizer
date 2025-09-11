@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import auth, employees, shifts, schedules, requests
+from app.api import auth, employees, shifts, schedules, requests, wards
 from app.database.connection import engine
 from app.models import models
 
@@ -24,6 +24,7 @@ app.add_middleware(
 
 # API 라우터 등록
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(wards.router, prefix="/api/wards", tags=["Wards"])
 app.include_router(employees.router, prefix="/api/employees", tags=["Employees"])
 app.include_router(shifts.router, prefix="/api/shifts", tags=["Shift Rules"])
 app.include_router(schedules.router, prefix="/api/schedules", tags=["Schedules"])
