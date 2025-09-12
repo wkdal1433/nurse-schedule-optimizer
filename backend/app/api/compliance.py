@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 from app.database.connection import get_db
-from app.models.models import ShiftRule, ComplianceViolation, Schedule
+from app.models.models import ShiftRule, ComplianceViolation
+from app.models.scheduling_models import Schedule
 from app.services.compliance_service import ComplianceService
 
 router = APIRouter()

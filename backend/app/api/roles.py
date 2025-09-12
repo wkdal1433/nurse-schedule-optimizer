@@ -9,8 +9,9 @@ from datetime import datetime, date
 from app.database.connection import get_db
 from app.models.models import (
     Employee, RoleConstraint, SupervisionPair, EmploymentTypeRule, 
-    RoleViolation, Schedule
+    RoleViolation
 )
+from app.models.scheduling_models import Schedule
 from app.services.role_assignment_service import RoleAssignmentService
 
 router = APIRouter()

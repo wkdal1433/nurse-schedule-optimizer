@@ -93,7 +93,9 @@ nurse-schedule-optimizer/
 - [x] **백엔드 시스템 안정화** ⚠️ 진행중
   - [x] 수동 편집 서비스 인스턴스화 문제 해결
   - [x] SQLAlchemy 메타데이터 Base 통합 (중복 제거)
-  - [ ] Schedule 클래스 중복 정의 제거 (models.py vs scheduling_models.py)
+  - [x] Schedule 클래스 중복 정의 제거 (models.py에서 제거 완료)
+  - [x] 모든 파일의 Schedule import 경로 수정 (→ scheduling_models)
+  - [ ] SQLAlchemy relationship 참조 수정 (models.py)
   - [ ] 백엔드 서버 시작 검증 완료
 
 - [ ] **내보내기 & 공유**

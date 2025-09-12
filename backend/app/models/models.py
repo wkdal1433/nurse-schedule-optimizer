@@ -66,22 +66,6 @@ class Ward(Base):
     employees = relationship("Employee", back_populates="ward")
     schedules = relationship("Schedule", back_populates="ward")
 
-class Schedule(Base):
-    __tablename__ = "schedules"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    ward_id = Column(Integer, ForeignKey("wards.id"), nullable=False)
-    month = Column(Integer, nullable=False)  # 1-12
-    year = Column(Integer, nullable=False)
-    schedule_data = Column(JSON, nullable=False)  # 실제 근무표 데이터
-    total_score = Column(Float, default=0.0)
-    status = Column(String, default="draft")  # "draft", "approved", "published"
-    created_at = Column(DateTime, default=datetime.utcnow)
-    approved_at = Column(DateTime, nullable=True)
-    
-    # 관계 설정
-    ward = relationship("Ward", back_populates="schedules")
-
 class ShiftRequest(Base):
     __tablename__ = "shift_requests"
     

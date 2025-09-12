@@ -6,8 +6,9 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from app.models.models import (
     PreferenceTemplate, ShiftRequestV2, PreferenceScore, 
-    Employee, Schedule, User
+    Employee, User
 )
+from app.models.scheduling_models import Schedule
 import json
 from collections import defaultdict
 

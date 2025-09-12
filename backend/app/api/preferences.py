@@ -288,7 +288,7 @@ async def get_fairness_analysis(
     db: Session = Depends(get_db)
 ):
     """스케줄 공정성 분석"""
-    from app.models.models import Schedule
+    from app.models.scheduling_models import Schedule
     
     schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
     if not schedule:

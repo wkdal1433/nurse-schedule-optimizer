@@ -5,7 +5,8 @@ from datetime import datetime
 import json
 
 from ..database.connection import get_db
-from ..models.models import Schedule, Employee, Ward, ShiftRequest
+from ..models.models import Employee, Ward, ShiftRequest
+from ..models.scheduling_models import Schedule
 from ..algorithms.scheduler import NurseScheduler
 from pydantic import BaseModel
 

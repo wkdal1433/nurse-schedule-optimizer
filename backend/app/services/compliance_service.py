@@ -4,7 +4,8 @@
 from typing import List, Dict, Any, Tuple
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from app.models.models import ShiftRule, ComplianceViolation, Employee, Schedule
+from app.models.models import ShiftRule, ComplianceViolation, Employee
+from app.models.scheduling_models import Schedule
 import json
 
 class ComplianceService:
