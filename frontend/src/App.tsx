@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import ComplianceRules from './components/ComplianceRules';
+import PreferenceManagement from './components/PreferenceManagement';
 import './App.css';
 
 function App() {
@@ -16,6 +17,12 @@ function App() {
             onClick={() => setCurrentTab('compliance')}
           >
             근무 규칙 관리
+          </button>
+          <button 
+            className={currentTab === 'preferences' ? 'active' : ''}
+            onClick={() => setCurrentTab('preferences')}
+          >
+            선호도 관리
           </button>
           <button 
             className={currentTab === 'schedule' ? 'active' : ''}
@@ -35,6 +42,9 @@ function App() {
       <main className="app-main">
         {currentTab === 'compliance' && (
           <ComplianceRules wardId={selectedWardId} />
+        )}
+        {currentTab === 'preferences' && (
+          <PreferenceManagement wardId={selectedWardId} />
         )}
         {currentTab === 'schedule' && (
           <div className="coming-soon">

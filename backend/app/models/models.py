@@ -127,3 +127,101 @@ class ComplianceViolation(Base):
     schedule = relationship("Schedule")
     employee = relationship("Employee")
     rule = relationship("ShiftRule")
+
+class PreferenceTemplate(Base):
+    __tablename__ = "preference_templates"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    
+    # 근무 선호도 설정
+    preferred_shifts = Column(JSON)  # ["day", "evening"] 등
+    avoided_shifts = Column(JSON)   # ["night"] 등
+    max_night_shifts_per_month = Column(Integer, default=10)
+    max_weekend_shifts_per_month = Column(Integer, default=8)
+    
+    # 근무 패턴 선호도
+    preferred_patterns = Column(JSON)  # ["day->day", "evening->off"] 등
+    avoided_patterns = Column(JSON)    # ["night->day"] 등
+    
+    # 연속 근무 선호도
+    max_consecutive_days = Column(Integer, default=3)
+    min_days_off_after_nights = Column(Integer, default=1)
+    
+    # 기타 제약 조건
+    cannot_work_alone = Column(Boolean, default=False)  # 단독 근무 불가
+    needs_senior_support = Column(Boolean, default=False)  # 선임 지원 필요
+    
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+    
+    # 관계 설정
+    employee = relationship("Employee")
+
+class ShiftRequestV2(Base):
+    __tablename__ = "shift_requests_v2"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    
+    # 요청 기간
+    start_date = Column(DateTime, nullable=False)
+    end_date = Column(DateTime, nullable=False)
+    
+    # 요청 유형
+    request_type = Column(String, nullable=False)  # "vacation", "shift_preference", "avoid", "pattern_request"
+    priority = Column(String, default="normal")    # "low", "normal", "high", "urgent"
+    
+    # 상세 요청 내용
+    shift_type = Column(String, nullable=True)     # 원하는 근무: "day", "evening", "night", "off"
+    reason = Column(Text)
+    medical_reason = Column(Boolean, default=False)  # 의료적 사유
+    
+    # 반복 요청 설정
+    is_recurring = Column(Boolean, default=False)
+    recurrence_pattern = Column(JSON)  # {"type": "weekly", "days": ["monday", "friday"]}
+    
+    # 유연성 설정
+    flexibility_level = Column(Integer, default=1)  # 1-5, 1=매우 엄격, 5=매우 유연
+    alternative_acceptable = Column(Boolean, default=True)
+    
+    # 상태 관리
+    status = Column(String, default="pending")     # "pending", "approved", "denied", "partially_approved"
+    admin_notes = Column(Text)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    reviewed_at = Column(DateTime, nullable=True)
+    reviewed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    
+    # 관계 설정
+    employee = relationship("Employee")
+    reviewer = relationship("User", foreign_keys=[reviewed_by])
+
+class PreferenceScore(Base):
+    __tablename__ = "preference_scores"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    schedule_id = Column(Integer, ForeignKey("schedules.id"), nullable=False)
+    
+    # 선호도 점수 분석
+    total_preference_score = Column(Float, default=0.0)
+    shift_preference_score = Column(Float, default=0.0)
+    pattern_preference_score = Column(Float, default=0.0)
+    workload_fairness_score = Column(Float, default=0.0)
+    
+    # 요청 충족률
+    vacation_fulfillment_rate = Column(Float, default=0.0)
+    shift_request_fulfillment_rate = Column(Float, default=0.0)
+    
+    # 월별 통계
+    night_shifts_assigned = Column(Integer, default=0)
+    weekend_shifts_assigned = Column(Integer, default=0)
+    total_hours_assigned = Column(Integer, default=0)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # 관계 설정
+    employee = relationship("Employee")
+    schedule = relationship("Schedule")
