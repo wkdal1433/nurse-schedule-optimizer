@@ -20,13 +20,13 @@ nurse-schedule-optimizer/
 ```
 
 ## 개발 환경
-- Backend: Python 3.8+, FastAPI, PostgreSQL
-- Frontend: React Native, Expo
-- Algorithm: Hybrid Metaheuristic (SA + Local Search)
+- Backend: Python 3.8+, FastAPI, PostgreSQL, NumPy
+- Frontend: React TypeScript, Material-UI, react-dnd
+- Algorithm: Enhanced Hybrid Metaheuristic (SA + Tabu Search + Multi-neighborhood LS)
 
 ## 개발 진행 상황
 
-**최근 업데이트**: 2024-12-09 - 수동 편집 & 응급 처리 기능 구현 완료
+**최근 업데이트**: 2024-12-09 - Enhanced 최적화 알고리즘 구현 완료
 
 ### 📋 기능 구현 체크리스트
 - [x] **근무 규칙 & 법적 준수 시스템** ✅
@@ -76,11 +76,14 @@ nurse-schedule-optimizer/
   - [ ] 관리용 내보내기 기능
 
 ### 🔧 기술적 구현 체크리스트
-- [x] **Hybrid Metaheuristic 최적화 알고리즘** ✅ 기본 구현 완료
-  - [x] 제약 조건 인코딩 시스템 (NurseScheduler 클래스)
-  - [x] CSP 솔버 기본 스케줄 생성
-  - [x] 점수 함수 구현 (scoring system)
-  - [x] 반복 개선 알고리즘 (SA + Local Search)
+- [x] **Enhanced Hybrid Metaheuristic 최적화 알고리즘** ✅ 고도화 완료
+  - [x] CSP 기반 스마트 초기화 시스템
+  - [x] Enhanced Simulated Annealing with Adaptive Reheating
+  - [x] Tabu Search for intensive local optimization
+  - [x] Multi-neighborhood Variable Local Search
+  - [x] 가중치 기반 제약조건 시스템 (Hard/Soft Constraints)
+  - [x] 실시간 제약조건 위반 검증 및 보고서
+  - [x] 7단계 적합도 함수 (법적준수/안전/역할/패턴/선호도/공평성/커버리지)
 
 - [x] **UI/UX 구현** ✅ 기본 구현 완료
   - [x] 드래그앤드롭 스케줄 에디터 (react-dnd 기반)
@@ -92,9 +95,32 @@ nurse-schedule-optimizer/
   - [ ] 이미지 렌더링
   - [ ] 개인별 스케줄 뷰 생성
 
+## 🧠 Enhanced 최적화 알고리즘 특징
+
+### 4단계 Hybrid Metaheuristic 최적화
+1. **CSP 기반 스마트 초기화**: 제약조건을 만족하는 초기 해 생성
+2. **Enhanced Simulated Annealing**: Adaptive Reheating으로 지역 최적해 탈출
+3. **Tabu Search**: 집중적 지역 탐색으로 해의 품질 향상
+4. **Multi-neighborhood Variable Local Search**: 4가지 이웃해 전략 동시 적용
+
+### 7단계 적합도 평가 시스템
+- **Hard Constraints**: 법적 준수 (연속근무 제한, 주휴 보장)
+- **Safety Constraints**: 인력 안전 (최소 인력 확보)
+- **Role Compliance**: 역할 기반 (신입-선임 페어링, 고용형태 제약)
+- **Pattern Quality**: 피로도 관리 (야근→주간 금지 등)
+- **Preference Satisfaction**: 개인 선호도 반영
+- **Fairness**: 야간근무 공평 분배
+- **Coverage Quality**: 시프트별 적정 인력 배치
+
+### 고급 제약조건 검증
+- 실시간 위반사항 검출 및 보고서 생성
+- 사양서 기준 가중치 시스템 적용
+- 제약조건별 세분화된 페널티/보너스 점수
+
 ## 시작하기
 1. 백엔드 실행: `cd backend && python -m uvicorn main:app --reload`
 2. 프론트엔드 실행: `cd frontend && npm start`
+3. 알고리즘 테스트: `cd backend && python test_enhanced_algorithm.py`
 
 ## 관련 문서
 - [상세 기능 명세서 v3](./docs/functional-algorithm-spec-v3.md)
