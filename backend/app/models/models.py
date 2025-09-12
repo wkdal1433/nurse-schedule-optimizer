@@ -81,3 +81,49 @@ class ShiftRequest(Base):
     
     # 관계 설정
     employee = relationship("Employee", back_populates="shift_requests")
+
+class ShiftRule(Base):
+    __tablename__ = "shift_rules"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    ward_id = Column(Integer, ForeignKey("wards.id"), nullable=True)  # NULL이면 전체 적용
+    rule_name = Column(String, nullable=False)
+    rule_type = Column(String, nullable=False)  # "hard", "soft"
+    category = Column(String, nullable=False)  # "consecutive", "weekly", "legal", "pattern"
+    
+    # 규칙 파라미터들
+    max_consecutive_nights = Column(Integer, default=3)
+    max_consecutive_days = Column(Integer, default=5)
+    min_rest_days_per_week = Column(Integer, default=1)
+    max_hours_per_week = Column(Integer, default=40)
+    
+    # 패턴 제한
+    forbidden_patterns = Column(JSON)  # ["day->night", "night->day"]
+    
+    # 점수 가중치
+    penalty_weight = Column(Float, default=1.0)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # 관계 설정
+    ward = relationship("Ward", foreign_keys=[ward_id])
+
+class ComplianceViolation(Base):
+    __tablename__ = "compliance_violations"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    schedule_id = Column(Integer, ForeignKey("schedules.id"), nullable=False)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    rule_id = Column(Integer, ForeignKey("shift_rules.id"), nullable=False)
+    violation_date = Column(DateTime, nullable=False)
+    violation_type = Column(String, nullable=False)
+    description = Column(Text)
+    severity = Column(String, default="medium")  # "low", "medium", "high", "critical"
+    penalty_score = Column(Float, default=0.0)
+    is_resolved = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # 관계 설정
+    schedule = relationship("Schedule")
+    employee = relationship("Employee")
+    rule = relationship("ShiftRule")
