@@ -1,11 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import auth, employees, shifts, schedules, requests, wards, compliance, preferences, roles, patterns
+from app.api import auth, employees, shifts, schedules, requests, wards, compliance, preferences, roles, patterns, manual_editing
 from app.database.connection import engine
 from app.models import models
+from app.models import scheduling_models
 
 # 데이터베이스 테이블 생성
 models.Base.metadata.create_all(bind=engine)
+scheduling_models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="간호사 근무표 최적화 시스템",
@@ -33,6 +35,7 @@ app.include_router(compliance.router, prefix="/api/compliance", tags=["Complianc
 app.include_router(preferences.router, prefix="/api/preferences", tags=["Preferences & Requests"])
 app.include_router(roles.router, prefix="/api/roles", tags=["Role Management"])
 app.include_router(patterns.router, prefix="/api/patterns", tags=["Pattern Validation"])
+app.include_router(manual_editing.router, prefix="/api/manual-editing", tags=["Manual Editing & Emergency"])
 
 @app.get("/")
 async def root():

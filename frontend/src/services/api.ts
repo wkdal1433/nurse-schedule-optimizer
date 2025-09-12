@@ -395,4 +395,176 @@ export const patternsAPI = {
     api.post(`/patterns/defaults/ward/${wardId}`)
 };
 
+// 수동 편집 및 응급 오버라이드 관련 API
+export interface Schedule {
+  id: number;
+  ward_id: number;
+  schedule_name: string;
+  period_start: string;
+  period_end: string;
+  status: 'draft' | 'active' | 'archived';
+  optimization_score: number;
+  compliance_score?: number;
+  pattern_score?: number;
+  preference_score?: number;
+}
+
+export interface ShiftAssignment {
+  id: number;
+  schedule_id: number;
+  employee_id: number;
+  employee_name?: string;
+  shift_date: string;
+  shift_type: string;
+  is_manual_assignment: boolean;
+  is_override: boolean;
+  override_reason?: string;
+}
+
+export interface ValidationResult {
+  valid: boolean;
+  warnings: any[];
+  errors: any[];
+  pattern_score: number;
+  recommendations: string[];
+}
+
+export interface ReplacementSuggestion {
+  employee_id: number;
+  employee_name: string;
+  role: string;
+  employment_type: string;
+  skill_level: number;
+  years_experience: number;
+  suitability_score: number;
+  suitability_reasons: string[];
+  warnings: string[];
+  availability_status: string;
+}
+
+export interface EmergencyLog {
+  id: number;
+  assignment_id: number;
+  emergency_type: string;
+  urgency_level: string;
+  original_employee_id: number;
+  replacement_employee_id?: number;
+  reason: string;
+  admin_id: number;
+  status: string;
+  created_at: string;
+  resolution_time?: string;
+}
+
+export const manualEditingAPI = {
+  // 근무 변경 검증 및 적용
+  validateChange: (data: {
+    assignment_id: number;
+    new_employee_id?: number;
+    new_shift_type?: string;
+    new_shift_date?: string;
+  }) =>
+    api.post<ValidationResult>('/manual-editing/validate-change', data),
+
+  applyChange: (data: {
+    assignment_id: number;
+    new_employee_id?: number;
+    new_shift_type?: string;
+    new_shift_date?: string;
+    override?: boolean;
+    override_reason?: string;
+    admin_id?: number;
+  }) =>
+    api.post('/manual-editing/apply-change', data),
+
+  // 대체자 추천
+  getReplacementSuggestions: (assignmentId: number, emergency: boolean = false, maxSuggestions: number = 5) =>
+    api.get<ReplacementSuggestion[]>(`/manual-editing/suggestions/${assignmentId}`, {
+      params: { emergency, max_suggestions: maxSuggestions }
+    }),
+
+  // 응급 재배치
+  emergencyReassignment: (data: {
+    assignment_id: number;
+    replacement_employee_id: number;
+    emergency_reason: string;
+    admin_id: number;
+    notify_affected?: boolean;
+  }) =>
+    api.post('/manual-editing/emergency-reassignment', data),
+
+  // 일괄 근무 교환
+  bulkSwap: (data: {
+    swap_pairs: Array<[number, number]>;
+    admin_id: number;
+    validation_level?: 'strict' | 'standard' | 'minimal';
+  }) =>
+    api.post('/manual-editing/bulk-swap', data),
+
+  // 스케줄 관리
+  getSchedules: (wardId?: number, status?: string, limit: number = 10) =>
+    api.get<Schedule[]>('/manual-editing/schedules/', {
+      params: { ward_id: wardId, status, limit }
+    }),
+
+  createSchedule: (data: {
+    ward_id: number;
+    schedule_name: string;
+    period_start: string;
+    period_end: string;
+    admin_id: number;
+  }) =>
+    api.post<Schedule>('/manual-editing/schedules/', null, { params: data }),
+
+  updateSchedule: (scheduleId: number, data: {
+    schedule_name?: string;
+    status?: string;
+    admin_id?: number;
+  }) =>
+    api.put(`/manual-editing/schedules/${scheduleId}`, null, { params: data }),
+
+  // 근무 배정 관리
+  getScheduleAssignments: (scheduleId: number, filters?: {
+    employee_id?: number;
+    shift_type?: string;
+    date_from?: string;
+    date_to?: string;
+  }) =>
+    api.get<ShiftAssignment[]>(`/manual-editing/schedules/${scheduleId}/assignments`, {
+      params: filters
+    }),
+
+  createAssignment: (data: {
+    schedule_id: number;
+    employee_id: number;
+    shift_date: string;
+    shift_type: string;
+    admin_id: number;
+    override?: boolean;
+    override_reason?: string;
+    notes?: string;
+  }) =>
+    api.post('/manual-editing/assignments/create', data),
+
+  deleteAssignment: (assignmentId: number, adminId: number, reason?: string) =>
+    api.delete(`/manual-editing/assignments/${assignmentId}`, {
+      params: { admin_id: adminId, reason }
+    }),
+
+  // 스케줄 점수
+  getScheduleScore: (scheduleId: number, recalculate: boolean = false) =>
+    api.get(`/manual-editing/schedules/${scheduleId}/score`, {
+      params: { recalculate }
+    }),
+
+  // 응급 로그
+  getEmergencyLogs: (filters?: {
+    assignment_id?: number;
+    admin_id?: number;
+    status?: string;
+    limit?: number;
+  }) =>
+    api.get('/manual-editing/emergency-logs/', { params: filters })
+};
+
 export default api;

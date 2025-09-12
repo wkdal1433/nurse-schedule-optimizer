@@ -26,6 +26,8 @@ nurse-schedule-optimizer/
 
 ## 개발 진행 상황
 
+**최근 업데이트**: 2024-12-09 - 수동 편집 & 응급 처리 기능 구현 완료
+
 ### 📋 기능 구현 체크리스트
 - [x] **근무 규칙 & 법적 준수 시스템** ✅
   - [x] 최대 연속 야간근무 제한 (2-3일)
@@ -50,11 +52,11 @@ nurse-schedule-optimizer/
   - [x] 피로도 감소 점수 시스템
   - [x] 연속 야간근무 패턴 제한
 
-- [ ] **수동 편집 & 응급 처리**
-  - [ ] 드래그앤드롭 스케줄 편집
-  - [ ] 실시간 최적화 점수 재계산
-  - [ ] 응급 근무 재배치 모드
-  - [ ] AI 기반 대체 근무자 추천
+- [x] **수동 편집 & 응급 처리** ✅ 완료
+  - [x] 드래그앤드롭 스케줄 편집 (ManualScheduleEditor 구현)
+  - [x] 실시간 최적화 점수 재계산 (validation API 구현)
+  - [x] 응급 근무 재배치 모드 (emergency_reassignment API 구현)
+  - [x] AI 기반 대체 근무자 추천 (replacement_suggestions API 구현)
 
 - [ ] **알림 & 공유 기능**
   - [ ] PDF/이미지 내보내기
@@ -74,16 +76,16 @@ nurse-schedule-optimizer/
   - [ ] 관리용 내보내기 기능
 
 ### 🔧 기술적 구현 체크리스트
-- [ ] **Hybrid Metaheuristic 최적화 알고리즘**
-  - [ ] 제약 조건 인코딩 시스템
-  - [ ] CSP 솔버 기본 스케줄 생성
-  - [ ] 점수 함수 구현
-  - [ ] 반복 개선 알고리즘
+- [x] **Hybrid Metaheuristic 최적화 알고리즘** ✅ 기본 구현 완료
+  - [x] 제약 조건 인코딩 시스템 (NurseScheduler 클래스)
+  - [x] CSP 솔버 기본 스케줄 생성
+  - [x] 점수 함수 구현 (scoring system)
+  - [x] 반복 개선 알고리즘 (SA + Local Search)
 
-- [ ] **UI/UX 구현**
-  - [ ] 드래그앤드롭 스케줄 에디터
-  - [ ] 반응형 캘린더 뷰
-  - [ ] 모바일 최적화 인터페이스
+- [x] **UI/UX 구현** ✅ 기본 구현 완료
+  - [x] 드래그앤드롭 스케줄 에디터 (react-dnd 기반)
+  - [x] 반응형 캘린더 뷰 (Material-UI 기반)
+  - [x] 모바일 최적화 인터페이스 (responsive design)
 
 - [ ] **내보내기 & 공유**
   - [ ] PDF 생성 엔진
