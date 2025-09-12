@@ -29,6 +29,22 @@ class Employee(Base):
     years_experience = Column(Integer, default=0)
     ward_id = Column(Integer, ForeignKey("wards.id"), nullable=False)
     preferences = Column(JSON)  # 근무 선호도 저장
+    
+    # 역할 관련 필드
+    role = Column(String, nullable=False, default="staff_nurse")  # "head_nurse", "staff_nurse", "new_nurse", "education_coordinator"
+    employment_type = Column(String, nullable=False, default="full_time")  # "full_time", "part_time"
+    
+    # 고용형태별 제약조건
+    allowed_shifts = Column(JSON)  # Part-time 근무자의 허용된 근무 시간대
+    max_hours_per_week = Column(Integer, default=40)
+    max_days_per_week = Column(Integer, default=5)
+    
+    # 역할별 특성
+    can_work_alone = Column(Boolean, default=True)  # 단독 근무 가능 여부
+    requires_supervision = Column(Boolean, default=False)  # 감독 필요 여부 (신입간호사)
+    can_supervise = Column(Boolean, default=True)  # 감독 가능 여부 (선임간호사)
+    specialization = Column(String, nullable=True)  # 전문 분야 (ICU, ER 등)
+    
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
@@ -225,3 +241,110 @@ class PreferenceScore(Base):
     # 관계 설정
     employee = relationship("Employee")
     schedule = relationship("Schedule")
+
+class RoleConstraint(Base):
+    __tablename__ = "role_constraints"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    role = Column(String, nullable=False)  # "head_nurse", "staff_nurse", "new_nurse", "education_coordinator"
+    ward_id = Column(Integer, ForeignKey("wards.id"), nullable=True)  # NULL이면 전체 적용
+    
+    # 역할별 근무 제약조건
+    allowed_shifts = Column(JSON)  # 허용된 근무 시간대
+    forbidden_shifts = Column(JSON)  # 금지된 근무 시간대
+    
+    # 인력 관련 제약
+    min_per_shift = Column(Integer, default=0)  # 근무당 최소 필요 인원
+    max_per_shift = Column(Integer, default=10)  # 근무당 최대 인원
+    
+    # 페어링 규칙
+    requires_pairing_with_roles = Column(JSON)  # 함께 근무해야 하는 역할들
+    cannot_work_with_roles = Column(JSON)  # 함께 근무할 수 없는 역할들
+    
+    # 특별 규칙
+    must_have_supervisor = Column(Boolean, default=False)  # 감독자 필요 여부
+    can_be_sole_charge = Column(Boolean, default=True)  # 단독 책임자 가능 여부
+    
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # 관계 설정
+    ward = relationship("Ward", foreign_keys=[ward_id])
+
+class SupervisionPair(Base):
+    __tablename__ = "supervision_pairs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    supervisor_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    supervisee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    
+    # 페어링 설정
+    pairing_type = Column(String, default="mentor")  # "mentor", "buddy", "preceptor"
+    is_mandatory = Column(Boolean, default=True)  # 필수 페어링 여부
+    
+    # 유효 기간
+    start_date = Column(DateTime, default=datetime.utcnow)
+    end_date = Column(DateTime, nullable=True)
+    
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # 관계 설정
+    supervisor = relationship("Employee", foreign_keys=[supervisor_id])
+    supervisee = relationship("Employee", foreign_keys=[supervisee_id])
+
+class EmploymentTypeRule(Base):
+    __tablename__ = "employment_type_rules"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    employment_type = Column(String, nullable=False)  # "full_time", "part_time"
+    ward_id = Column(Integer, ForeignKey("wards.id"), nullable=True)
+    
+    # 근무시간 제약
+    max_hours_per_day = Column(Integer, default=8)
+    max_hours_per_week = Column(Integer, default=40)
+    max_days_per_week = Column(Integer, default=5)
+    max_consecutive_days = Column(Integer, default=5)
+    
+    # 근무 시간대 제약
+    allowed_shift_types = Column(JSON)  # ["day", "evening", "night"]
+    forbidden_shift_types = Column(JSON)  # []
+    
+    # 특별 제약
+    weekend_work_allowed = Column(Boolean, default=True)
+    night_shift_allowed = Column(Boolean, default=True)
+    holiday_work_allowed = Column(Boolean, default=True)
+    
+    # 고용형태별 우선순위
+    scheduling_priority = Column(Integer, default=5)  # 1(최우선) ~ 10(최후순)
+    
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # 관계 설정
+    ward = relationship("Ward", foreign_keys=[ward_id])
+
+class RoleViolation(Base):
+    __tablename__ = "role_violations"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    schedule_id = Column(Integer, ForeignKey("schedules.id"), nullable=False)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    
+    violation_type = Column(String, nullable=False)  # "role_constraint", "pairing_required", "employment_type"
+    violation_date = Column(DateTime, nullable=False)
+    description = Column(Text)
+    
+    # 관련 정보
+    required_pairing_role = Column(String, nullable=True)  # 필요한 페어링 역할
+    missing_supervisor = Column(Boolean, default=False)
+    
+    severity = Column(String, default="medium")  # "low", "medium", "high", "critical"
+    penalty_score = Column(Float, default=0.0)
+    is_resolved = Column(Boolean, default=False)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # 관계 설정
+    schedule = relationship("Schedule")
+    employee = relationship("Employee")

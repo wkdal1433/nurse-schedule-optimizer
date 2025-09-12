@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import ComplianceRules from './components/ComplianceRules';
 import PreferenceManagement from './components/PreferenceManagement';
+import RoleManagement from './components/RoleManagement';
 import './App.css';
 
 function App() {
@@ -25,6 +26,12 @@ function App() {
             선호도 관리
           </button>
           <button 
+            className={currentTab === 'roles' ? 'active' : ''}
+            onClick={() => setCurrentTab('roles')}
+          >
+            역할 관리
+          </button>
+          <button 
             className={currentTab === 'schedule' ? 'active' : ''}
             onClick={() => setCurrentTab('schedule')}
           >
@@ -45,6 +52,9 @@ function App() {
         )}
         {currentTab === 'preferences' && (
           <PreferenceManagement wardId={selectedWardId} />
+        )}
+        {currentTab === 'roles' && (
+          <RoleManagement wardId={selectedWardId} />
         )}
         {currentTab === 'schedule' && (
           <div className="coming-soon">

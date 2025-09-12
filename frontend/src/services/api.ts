@@ -157,4 +157,130 @@ export const preferencesAPI = {
     api.post('/preferences/preferences/bulk', preferencesData),
 };
 
+// 역할 관리 관련 API
+export interface EmployeeRoleInfo {
+  employee_id: number;
+  employee_name: string;
+  role: string;
+  employment_type: string;
+  allowed_shifts?: string[];
+  max_hours_per_week: number;
+  max_days_per_week: number;
+  can_work_alone: boolean;
+  requires_supervision: boolean;
+  can_supervise: boolean;
+  specialization?: string;
+  years_experience: number;
+  skill_level: number;
+}
+
+export interface RoleConstraint {
+  id?: number;
+  role: string;
+  ward_id?: number;
+  allowed_shifts: string[];
+  forbidden_shifts: string[];
+  min_per_shift: number;
+  max_per_shift: number;
+  requires_pairing_with_roles: string[];
+  cannot_work_with_roles: string[];
+  must_have_supervisor: boolean;
+  can_be_sole_charge: boolean;
+}
+
+export interface SupervisionPair {
+  id?: number;
+  supervisor: {
+    id: number;
+    name: string;
+    role: string;
+  };
+  supervisee: {
+    id: number;
+    name: string;
+    role: string;
+  };
+  pairing_type: string;
+  is_mandatory: boolean;
+  start_date: string;
+  end_date?: string;
+  is_active: boolean;
+}
+
+export interface EmploymentTypeRule {
+  id?: number;
+  employment_type: string;
+  ward_id?: number;
+  max_hours_per_day: number;
+  max_hours_per_week: number;
+  max_days_per_week: number;
+  max_consecutive_days: number;
+  allowed_shift_types: string[];
+  forbidden_shift_types: string[];
+  weekend_work_allowed: boolean;
+  night_shift_allowed: boolean;
+  holiday_work_allowed: boolean;
+  scheduling_priority: number;
+}
+
+export const rolesAPI = {
+  // 직원 역할 관리
+  updateEmployeeRole: (employeeId: number, roleData: Partial<EmployeeRoleInfo>) =>
+    api.put(`/roles/employees/${employeeId}/role`, roleData),
+  
+  getEmployeeRoleInfo: (employeeId: number) =>
+    api.get<EmployeeRoleInfo>(`/roles/employees/${employeeId}/role`),
+  
+  getEmployeesByWard: (wardId: number, role?: string, employmentType?: string) =>
+    api.get<EmployeeRoleInfo[]>(`/roles/employees/by-ward/${wardId}`, {
+      params: { role, employment_type: employmentType }
+    }),
+  
+  // 역할별 제약조건 관리
+  createRoleConstraint: (constraint: Omit<RoleConstraint, 'id'>) =>
+    api.post('/roles/constraints/', constraint),
+  
+  getRoleConstraints: (wardId?: number, role?: string) =>
+    api.get<RoleConstraint[]>('/roles/constraints/', {
+      params: { ward_id: wardId, role }
+    }),
+  
+  // 감독 페어 관리
+  createSupervisionPair: (pairData: {
+    supervisor_id: number;
+    supervisee_id: number;
+    pairing_type?: string;
+    end_date?: string;
+  }) =>
+    api.post('/roles/supervision-pairs/', pairData),
+  
+  getSupervisionPairs: (wardId?: number, activeOnly: boolean = true) =>
+    api.get<SupervisionPair[]>('/roles/supervision-pairs/', {
+      params: { ward_id: wardId, active_only: activeOnly }
+    }),
+  
+  deactivateSupervisionPair: (pairId: number) =>
+    api.delete(`/roles/supervision-pairs/${pairId}`),
+  
+  // 고용형태별 규칙 관리
+  createEmploymentTypeRule: (rule: Omit<EmploymentTypeRule, 'id'>) =>
+    api.post('/roles/employment-rules/', rule),
+  
+  getEmploymentTypeRules: (employmentType?: string, wardId?: number) =>
+    api.get<EmploymentTypeRule[]>('/roles/employment-rules/', {
+      params: { employment_type: employmentType, ward_id: wardId }
+    }),
+  
+  // 역할 배치 검증
+  validateRoleAssignments: (scheduleId: number) =>
+    api.post('/roles/validate/', { schedule_id: scheduleId }),
+  
+  getRoleAssignmentSummary: (scheduleId: number) =>
+    api.get(`/roles/summary/${scheduleId}`),
+  
+  // 기본 설정 생성
+  createDefaultRoleSettings: (wardId: number) =>
+    api.post(`/roles/defaults/${wardId}`)
+};
+
 export default api;
