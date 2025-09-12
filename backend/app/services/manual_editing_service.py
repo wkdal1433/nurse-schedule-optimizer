@@ -3,9 +3,10 @@ from datetime import datetime, date, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 from app.models.models import (
-    Employee, ShiftAssignment, Schedule, Ward, ShiftRule, 
+    Employee, Ward, ShiftRule, 
     PreferenceTemplate, RoleConstraint, EmploymentTypeRule
 )
+from app.models.scheduling_models import Schedule, ShiftAssignment
 from app.services.compliance_service import ComplianceService
 from app.services.pattern_validation_service import PatternValidationService
 from app.services.role_assignment_service import RoleAssignmentService
@@ -17,9 +18,8 @@ class ManualEditingService:
     """수동 편집 및 응급 오버라이드 서비스"""
     
     def __init__(self):
-        self.compliance_service = ComplianceService()
-        self.pattern_service = PatternValidationService()
-        self.role_service = RoleAssignmentService()
+        # 서비스들은 메서드에서 필요할 때 생성됩니다
+        pass
     
     def validate_shift_change(
         self, 

@@ -8,8 +8,9 @@ from app.database.connection import get_db
 from app.services.pattern_validation_service import PatternValidationService
 from app.models.models import (
     ShiftPattern, PatternViolation, FatigueScore, PatternRecommendation,
-    Employee, Schedule, ShiftAssignment
+    Employee
 )
+from app.models.scheduling_models import Schedule, ShiftAssignment
 
 router = APIRouter()
 

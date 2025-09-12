@@ -1,7 +1,8 @@
 from typing import List, Dict, Tuple, Optional
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from app.models.models import Employee, ShiftAssignment
+from app.models.models import Employee
+from app.models.scheduling_models import Schedule, ShiftAssignment
 import logging
 
 logger = logging.getLogger(__name__)

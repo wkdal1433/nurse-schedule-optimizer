@@ -78,8 +78,7 @@ class ShiftAssignmentResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# 수동 편집 서비스 인스턴스
-manual_editing_service = ManualEditingService()
+# 수동 편집 서비스는 각 함수에서 필요시 생성됩니다
 
 @router.post("/validate-change", response_model=ValidationResult)
 def validate_shift_change(
@@ -88,7 +87,7 @@ def validate_shift_change(
 ):
     """근무 변경 전 유효성 검증"""
     try:
-        result = manual_editing_service.validate_shift_change(
+        result = ManualEditingService().validate_shift_change(
             db=db,
             assignment_id=request.assignment_id,
             new_employee_id=request.new_employee_id,
@@ -125,7 +124,7 @@ def apply_shift_change(
 ):
     """근무 변경 적용"""
     try:
-        result = manual_editing_service.apply_shift_change(
+        result = ManualEditingService().apply_shift_change(
             db=db,
             assignment_id=request.assignment_id,
             new_employee_id=request.new_employee_id,
@@ -168,7 +167,7 @@ def get_replacement_suggestions(
 ):
     """대체 근무자 추천"""
     try:
-        suggestions = manual_editing_service.get_replacement_suggestions(
+        suggestions = ManualEditingService().get_replacement_suggestions(
             db=db,
             assignment_id=assignment_id,
             emergency=emergency,
@@ -203,7 +202,7 @@ def emergency_reassignment(
 ):
     """응급 근무 재배치"""
     try:
-        result = manual_editing_service.emergency_reassignment(
+        result = ManualEditingService().emergency_reassignment(
             db=db,
             assignment_id=request.assignment_id,
             replacement_employee_id=request.replacement_employee_id,
@@ -243,7 +242,7 @@ def bulk_shift_swap(
 ):
     """일괄 근무 교환"""
     try:
-        result = manual_editing_service.bulk_shift_swap(
+        result = ManualEditingService().bulk_shift_swap(
             db=db,
             swap_pairs=request.swap_pairs,
             admin_id=request.admin_id,
@@ -437,7 +436,7 @@ def get_schedule_score(
         
         if recalculate:
             # 점수 재계산
-            new_score = manual_editing_service._recalculate_schedule_score(db, schedule_id)
+            new_score = ManualEditingService()._recalculate_schedule_score(db, schedule_id)
             
             # 스케줄 업데이트
             schedule.optimization_score = new_score

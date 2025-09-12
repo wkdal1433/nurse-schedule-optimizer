@@ -5,9 +5,8 @@ from app.database.connection import engine
 from app.models import models
 from app.models import scheduling_models
 
-# 데이터베이스 테이블 생성
+# 데이터베이스 테이블 생성 (models와 scheduling_models 모두 같은 Base 사용)
 models.Base.metadata.create_all(bind=engine)
-scheduling_models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="간호사 근무표 최적화 시스템",
