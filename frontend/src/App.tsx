@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import ComplianceRules from './components/ComplianceRules';
 import PreferenceManagement from './components/PreferenceManagement';
 import RoleManagement from './components/RoleManagement';
+import PatternValidation from './components/PatternValidation';
 import './App.css';
 
 function App() {
@@ -32,6 +33,12 @@ function App() {
             역할 관리
           </button>
           <button 
+            className={currentTab === 'patterns' ? 'active' : ''}
+            onClick={() => setCurrentTab('patterns')}
+          >
+            패턴 검증
+          </button>
+          <button 
             className={currentTab === 'schedule' ? 'active' : ''}
             onClick={() => setCurrentTab('schedule')}
           >
@@ -55,6 +62,9 @@ function App() {
         )}
         {currentTab === 'roles' && (
           <RoleManagement wardId={selectedWardId} />
+        )}
+        {currentTab === 'patterns' && (
+          <PatternValidation wardId={selectedWardId} />
         )}
         {currentTab === 'schedule' && (
           <div className="coming-soon">

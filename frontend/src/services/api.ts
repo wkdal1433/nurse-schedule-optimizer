@@ -283,4 +283,116 @@ export const rolesAPI = {
     api.post(`/roles/defaults/${wardId}`)
 };
 
+// 패턴 검증 관련 API
+export interface ShiftPattern {
+  id?: number;
+  pattern_name: string;
+  pattern_type: 'forbidden' | 'discouraged' | 'preferred';
+  description?: string;
+  sequence_length: number;
+  pattern_definition: any;
+  penalty_score: number;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  ward_id?: number;
+  role_specific?: string[];
+  is_active?: boolean;
+}
+
+export interface PatternViolation {
+  id: number;
+  employee_id: number;
+  pattern_name: string;
+  violation_date_start: string;
+  violation_date_end: string;
+  violation_sequence: string[];
+  description: string;
+  severity: string;
+  penalty_score: number;
+  is_resolved: boolean;
+  resolution_method?: string;
+}
+
+export interface PatternValidationResult {
+  employee_id: number;
+  is_valid: boolean;
+  total_penalty: number;
+  violations: any[];
+  pattern_score: number;
+  recommendations: string[];
+}
+
+export interface FatigueAnalysis {
+  employee_id: number;
+  total_fatigue_score: number;
+  risk_level: 'low' | 'medium' | 'high' | 'critical';
+  recommendations: string[];
+  rest_days_needed: number;
+}
+
+export const patternsAPI = {
+  // 패턴 규칙 관리
+  createPattern: (pattern: Omit<ShiftPattern, 'id'>) =>
+    api.post('/patterns/', pattern),
+  
+  getPatterns: (wardId?: number, patternType?: string, isActive: boolean = true) =>
+    api.get<ShiftPattern[]>('/patterns/', { 
+      params: { ward_id: wardId, pattern_type: patternType, is_active: isActive } 
+    }),
+  
+  updatePattern: (patternId: number, pattern: Partial<ShiftPattern>) =>
+    api.put(`/patterns/${patternId}`, pattern),
+  
+  deletePattern: (patternId: number) =>
+    api.delete(`/patterns/${patternId}`),
+  
+  // 패턴 검증
+  validateEmployeePattern: (employeeId: number, assignments: any[], periodStart: string, periodEnd: string) =>
+    api.post<PatternValidationResult>('/patterns/validate/employee', {
+      employee_id: employeeId,
+      assignments,
+      period_start: periodStart,
+      period_end: periodEnd
+    }),
+  
+  validateSchedulePatterns: (scheduleId: number) =>
+    api.post('/patterns/validate/schedule/' + scheduleId),
+  
+  // 위반사항 관리
+  getPatternViolations: (scheduleId: number, resolved?: boolean, severity?: string) =>
+    api.get(`/patterns/violations/schedule/${scheduleId}`, {
+      params: { resolved, severity }
+    }),
+  
+  resolveViolation: (violationId: number, resolutionMethod: string, notes?: string, resolverId?: number) =>
+    api.post(`/patterns/violations/${violationId}/resolve`, {
+      resolution_method: resolutionMethod,
+      resolution_notes: notes,
+      resolver_id: resolverId
+    }),
+  
+  // 피로도 분석
+  analyzeFatigue: (employeeId: number, periodStart: string, periodEnd: string) =>
+    api.post<FatigueAnalysis>('/patterns/fatigue/analyze', {
+      employee_id: employeeId,
+      period_start: periodStart,
+      period_end: periodEnd
+    }),
+  
+  // 통계
+  getPatternStatistics: (wardId: number, periodStart: string, periodEnd: string) =>
+    api.get(`/patterns/statistics/ward/${wardId}`, {
+      params: { period_start: periodStart, period_end: periodEnd }
+    }),
+  
+  // 권장사항
+  getPatternRecommendations: (scheduleId: number, priority?: string, status?: string) =>
+    api.get(`/patterns/recommendations/schedule/${scheduleId}`, {
+      params: { priority, status }
+    }),
+  
+  // 기본 패턴 생성
+  createDefaultPatterns: (wardId: number) =>
+    api.post(`/patterns/defaults/ward/${wardId}`)
+};
+
 export default api;

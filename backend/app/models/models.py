@@ -142,6 +142,130 @@ class ComplianceViolation(Base):
     # 관계 설정
     schedule = relationship("Schedule")
     employee = relationship("Employee")
+
+# 패턴 검증 관련 모델들
+
+class ShiftPattern(Base):
+    __tablename__ = "shift_patterns"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    pattern_name = Column(String, nullable=False)  # "day_to_night", "excessive_nights" 등
+    pattern_type = Column(String, nullable=False)  # "forbidden", "discouraged", "preferred"
+    description = Column(Text)
+    
+    # 패턴 정의
+    sequence_length = Column(Integer, default=2)  # 패턴의 시퀀스 길이
+    pattern_definition = Column(JSON)  # 패턴의 구체적 정의
+    
+    # 점수 및 패널티
+    penalty_score = Column(Float, default=0.0)
+    severity = Column(String, default="medium")  # "low", "medium", "high", "critical"
+    
+    # 적용 범위
+    ward_id = Column(Integer, ForeignKey("wards.id"), nullable=True)  # NULL이면 전체 병동 적용
+    role_specific = Column(JSON)  # 특정 역할에만 적용되는 패턴
+    
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # 관계 설정
+    ward = relationship("Ward", foreign_keys=[ward_id])
+
+class PatternViolation(Base):
+    __tablename__ = "pattern_violations"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    schedule_id = Column(Integer, ForeignKey("schedules.id"), nullable=False)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    pattern_id = Column(Integer, ForeignKey("shift_patterns.id"), nullable=False)
+    
+    # 위반 정보
+    violation_date_start = Column(DateTime, nullable=False)  # 위반 패턴 시작일
+    violation_date_end = Column(DateTime, nullable=False)    # 위반 패턴 종료일
+    violation_sequence = Column(JSON)  # 위반된 근무 시퀀스 ["day", "night", ...]
+    
+    # 위반 세부사항
+    description = Column(Text)
+    severity = Column(String, default="medium")  # "low", "medium", "high", "critical"
+    penalty_score = Column(Float, default=0.0)
+    
+    # 해결 상태
+    is_resolved = Column(Boolean, default=False)
+    resolution_method = Column(String, nullable=True)  # "manual_fix", "auto_adjust", "override"
+    resolution_notes = Column(Text, nullable=True)
+    resolved_at = Column(DateTime, nullable=True)
+    resolved_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # 관계 설정
+    schedule = relationship("Schedule")
+    employee = relationship("Employee")
+    pattern = relationship("ShiftPattern")
+    resolver = relationship("User", foreign_keys=[resolved_by])
+
+class FatigueScore(Base):
+    __tablename__ = "fatigue_scores"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    calculation_date = Column(DateTime, nullable=False)
+    
+    # 피로도 점수 구성요소
+    consecutive_days_score = Column(Float, default=0.0)     # 연속 근무일로 인한 피로도
+    night_shift_score = Column(Float, default=0.0)         # 야간 근무로 인한 피로도
+    shift_change_score = Column(Float, default=0.0)        # 근무 패턴 변경으로 인한 피로도
+    workload_score = Column(Float, default=0.0)            # 업무량으로 인한 피로도
+    
+    # 총 피로도 점수
+    total_fatigue_score = Column(Float, default=0.0)  # 0-100 점수 (높을수록 피로함)
+    risk_level = Column(String, default="low")  # "low", "medium", "high", "critical"
+    
+    # 권장사항
+    recommendations = Column(JSON)  # 피로도 개선을 위한 권장사항들
+    rest_days_needed = Column(Integer, default=0)  # 권장 휴게일 수
+    
+    # 계산 기간
+    period_start = Column(DateTime, nullable=False)
+    period_end = Column(DateTime, nullable=False)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # 관계 설정
+    employee = relationship("Employee")
+
+class PatternRecommendation(Base):
+    __tablename__ = "pattern_recommendations"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    schedule_id = Column(Integer, ForeignKey("schedules.id"), nullable=False)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    
+    # 권장사항 정보
+    recommendation_type = Column(String, nullable=False)  # "rest_day", "shift_change", "workload_reduce"
+    priority = Column(String, default="medium")  # "low", "medium", "high", "urgent"
+    
+    current_pattern = Column(JSON)     # 현재 근무 패턴
+    recommended_pattern = Column(JSON) # 권장 근무 패턴
+    
+    # 개선 효과 예상치
+    fatigue_improvement = Column(Float, default=0.0)      # 피로도 개선 정도
+    pattern_score_improvement = Column(Float, default=0.0) # 패턴 점수 개선
+    
+    # 구현 정보
+    implementation_difficulty = Column(String, default="medium")  # "easy", "medium", "hard"
+    estimated_impact = Column(Text)  # 예상되는 영향
+    
+    # 상태 추적
+    status = Column(String, default="pending")  # "pending", "accepted", "rejected", "implemented"
+    admin_notes = Column(Text, nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 관계 설정
+    schedule = relationship("Schedule")
+    employee = relationship("Employee")
     rule = relationship("ShiftRule")
 
 class PreferenceTemplate(Base):
@@ -344,6 +468,130 @@ class RoleViolation(Base):
     is_resolved = Column(Boolean, default=False)
     
     created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # 관계 설정
+    schedule = relationship("Schedule")
+    employee = relationship("Employee")
+
+# 패턴 검증 관련 모델들
+
+class ShiftPattern(Base):
+    __tablename__ = "shift_patterns"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    pattern_name = Column(String, nullable=False)  # "day_to_night", "excessive_nights" 등
+    pattern_type = Column(String, nullable=False)  # "forbidden", "discouraged", "preferred"
+    description = Column(Text)
+    
+    # 패턴 정의
+    sequence_length = Column(Integer, default=2)  # 패턴의 시퀀스 길이
+    pattern_definition = Column(JSON)  # 패턴의 구체적 정의
+    
+    # 점수 및 패널티
+    penalty_score = Column(Float, default=0.0)
+    severity = Column(String, default="medium")  # "low", "medium", "high", "critical"
+    
+    # 적용 범위
+    ward_id = Column(Integer, ForeignKey("wards.id"), nullable=True)  # NULL이면 전체 병동 적용
+    role_specific = Column(JSON)  # 특정 역할에만 적용되는 패턴
+    
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # 관계 설정
+    ward = relationship("Ward", foreign_keys=[ward_id])
+
+class PatternViolation(Base):
+    __tablename__ = "pattern_violations"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    schedule_id = Column(Integer, ForeignKey("schedules.id"), nullable=False)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    pattern_id = Column(Integer, ForeignKey("shift_patterns.id"), nullable=False)
+    
+    # 위반 정보
+    violation_date_start = Column(DateTime, nullable=False)  # 위반 패턴 시작일
+    violation_date_end = Column(DateTime, nullable=False)    # 위반 패턴 종료일
+    violation_sequence = Column(JSON)  # 위반된 근무 시퀀스 ["day", "night", ...]
+    
+    # 위반 세부사항
+    description = Column(Text)
+    severity = Column(String, default="medium")  # "low", "medium", "high", "critical"
+    penalty_score = Column(Float, default=0.0)
+    
+    # 해결 상태
+    is_resolved = Column(Boolean, default=False)
+    resolution_method = Column(String, nullable=True)  # "manual_fix", "auto_adjust", "override"
+    resolution_notes = Column(Text, nullable=True)
+    resolved_at = Column(DateTime, nullable=True)
+    resolved_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # 관계 설정
+    schedule = relationship("Schedule")
+    employee = relationship("Employee")
+    pattern = relationship("ShiftPattern")
+    resolver = relationship("User", foreign_keys=[resolved_by])
+
+class FatigueScore(Base):
+    __tablename__ = "fatigue_scores"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    calculation_date = Column(DateTime, nullable=False)
+    
+    # 피로도 점수 구성요소
+    consecutive_days_score = Column(Float, default=0.0)     # 연속 근무일로 인한 피로도
+    night_shift_score = Column(Float, default=0.0)         # 야간 근무로 인한 피로도
+    shift_change_score = Column(Float, default=0.0)        # 근무 패턴 변경으로 인한 피로도
+    workload_score = Column(Float, default=0.0)            # 업무량으로 인한 피로도
+    
+    # 총 피로도 점수
+    total_fatigue_score = Column(Float, default=0.0)  # 0-100 점수 (높을수록 피로함)
+    risk_level = Column(String, default="low")  # "low", "medium", "high", "critical"
+    
+    # 권장사항
+    recommendations = Column(JSON)  # 피로도 개선을 위한 권장사항들
+    rest_days_needed = Column(Integer, default=0)  # 권장 휴게일 수
+    
+    # 계산 기간
+    period_start = Column(DateTime, nullable=False)
+    period_end = Column(DateTime, nullable=False)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # 관계 설정
+    employee = relationship("Employee")
+
+class PatternRecommendation(Base):
+    __tablename__ = "pattern_recommendations"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    schedule_id = Column(Integer, ForeignKey("schedules.id"), nullable=False)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    
+    # 권장사항 정보
+    recommendation_type = Column(String, nullable=False)  # "rest_day", "shift_change", "workload_reduce"
+    priority = Column(String, default="medium")  # "low", "medium", "high", "urgent"
+    
+    current_pattern = Column(JSON)     # 현재 근무 패턴
+    recommended_pattern = Column(JSON) # 권장 근무 패턴
+    
+    # 개선 효과 예상치
+    fatigue_improvement = Column(Float, default=0.0)      # 피로도 개선 정도
+    pattern_score_improvement = Column(Float, default=0.0) # 패턴 점수 개선
+    
+    # 구현 정보
+    implementation_difficulty = Column(String, default="medium")  # "easy", "medium", "hard"
+    estimated_impact = Column(Text)  # 예상되는 영향
+    
+    # 상태 추적
+    status = Column(String, default="pending")  # "pending", "accepted", "rejected", "implemented"
+    admin_notes = Column(Text, nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # 관계 설정
     schedule = relationship("Schedule")
