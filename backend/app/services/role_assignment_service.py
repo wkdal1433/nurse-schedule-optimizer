@@ -6,8 +6,9 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from app.models.models import (
     Employee, RoleConstraint, SupervisionPair, EmploymentTypeRule, 
-    RoleViolation, Schedule, Ward
+    RoleViolation, Ward
 )
+from app.models.scheduling_models import Schedule
 from collections import defaultdict
 import json
 

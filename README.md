@@ -90,13 +90,13 @@ nurse-schedule-optimizer/
   - [x] 반응형 캘린더 뷰 (Material-UI 기반)
   - [x] 모바일 최적화 인터페이스 (responsive design)
 
-- [x] **백엔드 시스템 안정화** ⚠️ 진행중
+- [x] **백엔드 시스템 안정화** ✅ 완료
   - [x] 수동 편집 서비스 인스턴스화 문제 해결
   - [x] SQLAlchemy 메타데이터 Base 통합 (중복 제거)
   - [x] Schedule 클래스 중복 정의 제거 (models.py에서 제거 완료)
   - [x] 모든 파일의 Schedule import 경로 수정 (→ scheduling_models)
-  - [ ] SQLAlchemy relationship 참조 수정 (models.py)
-  - [ ] 백엔드 서버 시작 검증 완료
+  - [x] SQLAlchemy relationship 참조 수정 (models.py)
+  - [x] 백엔드 서버 시작 검증 완료 (Uvicorn 정상 구동)
 
 - [ ] **내보내기 & 공유**
   - [ ] PDF 생성 엔진
