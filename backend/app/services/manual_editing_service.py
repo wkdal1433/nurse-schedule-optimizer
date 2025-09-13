@@ -684,11 +684,38 @@ class ManualEditingService:
                     score += 15
                     reasons.append(f'응급/중환자 전문 ({candidate.specialization})')
             
+            # 7. 선호도 기반 평가 (새로 추가)
+            preference_score = self._evaluate_shift_preference(db, candidate.id, target_shift, target_date)
+            score += preference_score['score']
+            if preference_score['reasons']:
+                reasons.extend(preference_score['reasons'])
+            if preference_score['warnings']:
+                warnings.extend(preference_score['warnings'])
+            
+            # 8. 피로도 및 워크로드 분석 (새로 추가)
+            fatigue_analysis = self._evaluate_fatigue_level(db, candidate.id, target_date)
+            score += fatigue_analysis['score']
+            if fatigue_analysis['reasons']:
+                reasons.extend(fatigue_analysis['reasons'])
+            if fatigue_analysis['warnings']:
+                warnings.extend(fatigue_analysis['warnings'])
+            
+            # 9. 팀 균형 및 협업 고려 (새로 추가)
+            team_balance = self._evaluate_team_balance(db, candidate.id, target_date, target_shift)
+            score += team_balance['score']
+            if team_balance['reasons']:
+                reasons.extend(team_balance['reasons'])
+            
             return {
                 'score': max(0, score),
                 'reasons': reasons,
                 'warnings': warnings,
-                'availability': availability
+                'availability': availability,
+                'detailed_scores': {
+                    'preference': preference_score['score'],
+                    'fatigue': fatigue_analysis['score'],
+                    'team_balance': team_balance['score']
+                }
             }
             
         except Exception as e:
@@ -764,3 +791,237 @@ class ManualEditingService:
             logger.info(f"응급 알림 대기열 추가 - 대상: {employee_ids}, 근무: {assignment.id}, 사유: {reason}")
         except Exception as e:
             logger.error(f"응급 알림 대기열 추가 중 오류: {str(e)}")
+    
+    def _evaluate_shift_preference(self, db: Session, employee_id: int, shift_type: str, target_date: date) -> Dict:
+        """선호도 기반 평가"""
+        score = 0
+        reasons = []
+        warnings = []
+        
+        try:
+            # 직원의 선호도 정보 조회
+            from app.models.models import ShiftRequestV2
+            
+            # 해당 날짜 또는 요일의 선호도 조회
+            target_weekday = target_date.weekday()  # 0=Monday, 6=Sunday
+            
+            preferences = db.query(ShiftRequestV2).filter(
+                ShiftRequestV2.employee_id == employee_id,
+                or_(
+                    ShiftRequestV2.request_date == target_date,
+                    and_(
+                        ShiftRequestV2.weekly_pattern == True,
+                        ShiftRequestV2.weekday == target_weekday
+                    )
+                )
+            ).all()
+            
+            for pref in preferences:
+                if pref.shift_type == shift_type:
+                    if pref.priority == 'high':
+                        score += 20
+                        reasons.append(f'{shift_type} 근무 강력 선호')
+                    elif pref.priority == 'medium':
+                        score += 10
+                        reasons.append(f'{shift_type} 근무 선호')
+                    elif pref.priority == 'low':
+                        score += 5
+                        reasons.append(f'{shift_type} 근무 약간 선호')
+                elif pref.shift_type == 'off' and pref.priority == 'high':
+                    score -= 15
+                    warnings.append(f'해당 날짜에 휴무 강력 희망')
+            
+            # 과거 근무 패턴 기반 선호도 추정
+            from datetime import timedelta
+            past_assignments = db.query(ShiftAssignment).filter(
+                ShiftAssignment.employee_id == employee_id,
+                ShiftAssignment.shift_date >= target_date - timedelta(days=90)
+            ).all()
+            
+            if past_assignments:
+                shift_counts = {}
+                for assignment in past_assignments:
+                    shift_counts[assignment.shift_type] = shift_counts.get(assignment.shift_type, 0) + 1
+                
+                total_shifts = len(past_assignments)
+                if total_shifts > 0:
+                    shift_ratio = shift_counts.get(shift_type, 0) / total_shifts
+                    if shift_ratio > 0.4:  # 40% 이상 해당 시프트 근무했다면
+                        score += 8
+                        reasons.append(f'최근 {shift_type} 근무 경험 풍부 ({shift_ratio:.1%})')
+                    elif shift_ratio < 0.1:  # 10% 미만이라면
+                        score -= 5
+                        warnings.append(f'최근 {shift_type} 근무 경험 부족')
+            
+            return {'score': score, 'reasons': reasons, 'warnings': warnings}
+            
+        except Exception as e:
+            logger.error(f"선호도 평가 중 오류: {str(e)}")
+            return {'score': 0, 'reasons': [], 'warnings': ['선호도 평가 실패']}
+    
+    def _evaluate_fatigue_level(self, db: Session, employee_id: int, target_date: date) -> Dict:
+        """피로도 및 워크로드 분석"""
+        score = 0
+        reasons = []
+        warnings = []
+        
+        try:
+            from datetime import timedelta
+            
+            # 최근 2주간 근무 이력 조회
+            two_weeks_ago = target_date - timedelta(days=14)
+            recent_assignments = db.query(ShiftAssignment).filter(
+                ShiftAssignment.employee_id == employee_id,
+                ShiftAssignment.shift_date >= two_weeks_ago,
+                ShiftAssignment.shift_date < target_date
+            ).order_by(ShiftAssignment.shift_date.desc()).all()
+            
+            if not recent_assignments:
+                score += 15
+                reasons.append('최근 2주간 근무 부담 없음')
+                return {'score': score, 'reasons': reasons, 'warnings': warnings}
+            
+            # 연속 근무일 계산
+            consecutive_days = 0
+            last_date = target_date - timedelta(days=1)
+            
+            for assignment in recent_assignments:
+                if assignment.shift_date.date() == last_date:
+                    consecutive_days += 1
+                    last_date -= timedelta(days=1)
+                else:
+                    break
+            
+            if consecutive_days >= 5:
+                score -= 20
+                warnings.append(f'연속 {consecutive_days}일 근무 - 높은 피로도')
+            elif consecutive_days >= 3:
+                score -= 10
+                warnings.append(f'연속 {consecutive_days}일 근무 - 중간 피로도')
+            elif consecutive_days <= 1:
+                score += 10
+                reasons.append('충분한 휴식 후 근무')
+            
+            # 야간 근무 빈도 분석
+            night_shifts = [a for a in recent_assignments if a.shift_type == 'night']
+            if len(night_shifts) >= 6:  # 2주간 6번 이상 야간
+                score -= 15
+                warnings.append('최근 야간 근무 과부하')
+            elif len(night_shifts) <= 2:
+                score += 8
+                reasons.append('야간 근무 부담 적음')
+            
+            # 주말 근무 분석
+            weekend_shifts = []
+            for assignment in recent_assignments:
+                if assignment.shift_date.weekday() >= 5:  # 토, 일
+                    weekend_shifts.append(assignment)
+            
+            if len(weekend_shifts) >= 4:  # 2주간 4번 이상 주말
+                score -= 10
+                warnings.append('주말 근무 과부하')
+            elif len(weekend_shifts) <= 1:
+                score += 5
+                reasons.append('주말 근무 부담 적음')
+            
+            # 총 근무시간 계산 (8시간 기준)
+            total_hours = len(recent_assignments) * 8
+            if total_hours > 80:  # 2주간 80시간 초과
+                score -= 15
+                warnings.append(f'높은 근무시간 ({total_hours}시간)')
+            elif total_hours < 40:
+                score += 10
+                reasons.append(f'적절한 근무시간 ({total_hours}시간)')
+            
+            return {'score': score, 'reasons': reasons, 'warnings': warnings}
+            
+        except Exception as e:
+            logger.error(f"피로도 분석 중 오류: {str(e)}")
+            return {'score': 0, 'reasons': [], 'warnings': ['피로도 분석 실패']}
+    
+    def _evaluate_team_balance(self, db: Session, employee_id: int, target_date: date, shift_type: str) -> Dict:
+        """팀 균형 및 협업 고려"""
+        score = 0
+        reasons = []
+        warnings = []
+        
+        try:
+            # 해당 날짜의 동일 시프트 근무자들 조회
+            same_shift_assignments = db.query(ShiftAssignment).filter(
+                and_(
+                    ShiftAssignment.shift_date == target_date,
+                    ShiftAssignment.shift_type == shift_type,
+                    ShiftAssignment.employee_id != employee_id
+                )
+            ).all()
+            
+            if not same_shift_assignments:
+                score += 5
+                reasons.append('해당 시프트 첫 번째 배정')
+                return {'score': score, 'reasons': reasons, 'warnings': warnings}
+            
+            # 현재 직원 정보 조회
+            current_employee = db.query(Employee).filter(Employee.id == employee_id).first()
+            if not current_employee:
+                return {'score': 0, 'reasons': [], 'warnings': ['직원 정보 없음']}
+            
+            # 팀 구성 분석
+            team_roles = []
+            team_experience = []
+            team_skill_levels = []
+            
+            for assignment in same_shift_assignments:
+                employee = assignment.employee
+                if employee:
+                    team_roles.append(employee.role)
+                    team_experience.append(employee.years_experience)
+                    team_skill_levels.append(employee.skill_level)
+            
+            # 역할 균형 평가
+            senior_count = len([r for r in team_roles if r in ['head_nurse', 'senior_nurse']])
+            new_nurse_count = len([r for r in team_roles if r == 'new_nurse'])
+            
+            if current_employee.role in ['head_nurse', 'senior_nurse']:
+                if senior_count < 1:  # 선임이 없다면
+                    score += 15
+                    reasons.append('팀에 필요한 선임 간호사')
+                elif senior_count >= 2:  # 선임이 이미 많다면
+                    score -= 5
+                    warnings.append('선임 간호사 포화 상태')
+            
+            elif current_employee.role == 'new_nurse':
+                if new_nurse_count >= 2 and senior_count < 1:  # 신입이 많고 선임이 없다면
+                    score -= 10
+                    warnings.append('신입 간호사 과다, 감독 부족')
+                elif senior_count >= 1:  # 선임이 있다면
+                    score += 8
+                    reasons.append('선임 감독 하에 안전한 근무')
+            
+            # 경험 균형 평가
+            if team_experience:
+                avg_experience = sum(team_experience) / len(team_experience)
+                if current_employee.years_experience > avg_experience + 2:
+                    score += 10
+                    reasons.append('팀 평균보다 높은 경험')
+                elif current_employee.years_experience < avg_experience - 2:
+                    score -= 5
+                    warnings.append('팀 평균보다 낮은 경험')
+            
+            # 숙련도 균형 평가
+            if team_skill_levels:
+                avg_skill = sum(team_skill_levels) / len(team_skill_levels)
+                if current_employee.skill_level > avg_skill + 1:
+                    score += 8
+                    reasons.append('팀 평균보다 높은 숙련도')
+            
+            # 특수 상황 고려
+            if shift_type == 'night' and len(same_shift_assignments) < 3:
+                if current_employee.role in ['head_nurse', 'senior_nurse']:
+                    score += 12
+                    reasons.append('야간 인력 부족 시 선임 보강')
+            
+            return {'score': score, 'reasons': reasons, 'warnings': warnings}
+            
+        except Exception as e:
+            logger.error(f"팀 균형 분석 중 오류: {str(e)}")
+            return {'score': 0, 'reasons': [], 'warnings': ['팀 균형 분석 실패']}

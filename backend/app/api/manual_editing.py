@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from app.database.connection import get_db
 from app.services.manual_editing_service import ManualEditingService
+from app.services.permission_service import PermissionService
 from app.models.models import Employee, User
 from app.models.scheduling_models import Schedule, ShiftAssignment, EmergencyLog
 
@@ -78,9 +79,33 @@ class ShiftAssignmentResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# 수동 편집 서비스는 각 함수에서 필요시 생성됩니다
+# 권한 검사 헬퍼 함수
+def check_user_permission(db: Session, action: str, user_id: int = 1, ward_id: int = None) -> dict:
+    """임시 권한 검사 함수 (실제 환경에서는 JWT 토큰에서 user_id 추출)"""
+    permission_service = PermissionService()
+    return permission_service.check_permission(db, user_id, action, ward_id)
+
+def require_permission(action: str):
+    """권한 검사 데코레이터"""
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            db = kwargs.get('db')
+            # 실제 환경에서는 JWT 토큰에서 추출
+            user_id = 1  # 임시로 관리자 ID 사용
+            
+            permission_result = check_user_permission(db, action, user_id)
+            if not permission_result['allowed']:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"권한 부족: {permission_result['reason']}"
+                )
+            
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
 
 @router.post("/validate-change", response_model=ValidationResult)
+@require_permission("basic_schedule_edit")
 def validate_shift_change(
     request: ShiftChangeRequest,
     db: Session = Depends(get_db)
@@ -196,6 +221,7 @@ def get_replacement_suggestions(
         )
 
 @router.post("/emergency-reassignment")
+@require_permission("emergency_override")
 def emergency_reassignment(
     request: EmergencyReassignmentRequest,
     db: Session = Depends(get_db)
@@ -236,6 +262,7 @@ def emergency_reassignment(
         )
 
 @router.post("/bulk-swap")
+@require_permission("bulk_edit")
 def bulk_shift_swap(
     request: BulkSwapRequest,
     db: Session = Depends(get_db)
@@ -610,4 +637,86 @@ def delete_shift_assignment(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"배정 삭제 중 오류 발생: {str(e)}"
+        )
+
+# 권한 관련 엔드포인트
+@router.get("/permissions/current-user")
+def get_current_user_permissions(
+    ward_id: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    """현재 사용자의 권한 정보 조회"""
+    try:
+        # 실제 환경에서는 JWT 토큰에서 user_id 추출
+        user_id = 1  # 임시로 관리자 ID 사용
+        
+        permission_service = PermissionService()
+        permissions = permission_service.create_permission_summary(db, user_id)
+        
+        if 'error' in permissions:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=permissions['error']
+            )
+        
+        return permissions
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"권한 정보 조회 중 오류 발생: {str(e)}"
+        )
+
+@router.get("/permissions/available-actions")
+def get_available_actions(
+    ward_id: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    """사용자가 수행 가능한 액션 목록"""
+    try:
+        # 실제 환경에서는 JWT 토큰에서 user_id 추출
+        user_id = 1  # 임시로 관리자 ID 사용
+        
+        permission_service = PermissionService()
+        actions = permission_service.get_available_actions(db, user_id, ward_id)
+        
+        return {
+            "available_actions": actions,
+            "user_id": user_id,
+            "ward_id": ward_id
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"사용 가능한 액션 조회 중 오류 발생: {str(e)}"
+        )
+
+@router.post("/permissions/check")
+def check_specific_permission(
+    action: str,
+    ward_id: Optional[int] = None,
+    target_employee_id: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    """특정 권한 확인"""
+    try:
+        # 실제 환경에서는 JWT 토큰에서 user_id 추출
+        user_id = 1  # 임시로 관리자 ID 사용
+        
+        permission_result = check_user_permission(db, action, user_id, ward_id)
+        
+        return {
+            "action": action,
+            "allowed": permission_result['allowed'],
+            "reason": permission_result['reason'],
+            "permission_level": permission_result.get('level', 0)
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"권한 확인 중 오류 발생: {str(e)}"
         )
