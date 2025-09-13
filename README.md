@@ -26,7 +26,7 @@ nurse-schedule-optimizer/
 
 ## 개발 진행 상황
 
-**최근 업데이트**: 2024-12-09 - Enhanced 최적화 알고리즘 구현 완료
+**최근 업데이트**: 2025-09-13 - 응급 상황 워크플로우 및 실시간 알림 시스템 완료
 
 ### 📋 기능 구현 체크리스트
 - [x] **근무 규칙 & 법적 준수 시스템** ✅
@@ -66,10 +66,13 @@ nurse-schedule-optimizer/
     - [x] 병동별 권한 분리 및 대상 직원 권한 검사
     - [x] 권한 확인 API 엔드포인트 (permissions/)
 
-- [ ] **알림 & 공유 기능**
+- [x] **알림 & 공유 기능** ✅ 핵심 구현 완료
+  - [x] 실시간 WebSocket 푸시 알림 시스템
+  - [x] 응급 상황 브로드캐스트 알림
+  - [x] 승인 워크플로우 알림
+  - [x] 근무 변경 실시간 통지
   - [ ] PDF/이미지 내보내기
   - [ ] 카카오톡/이메일 공유
-  - [ ] 스케줄 업데이트 푸시 알림
   - [ ] 개인별 맞춤 스케줄 뷰
 
 - [ ] **인력 안전 검증**
@@ -105,6 +108,15 @@ nurse-schedule-optimizer/
   - [x] 모든 파일의 Schedule import 경로 수정 (→ scheduling_models)
   - [x] SQLAlchemy relationship 참조 수정 (models.py)
   - [x] 백엔드 서버 시작 검증 완료 (Uvicorn 정상 구동)
+
+- [x] **알림 & 워크플로우 시스템** ✅ 완전 구현
+  - [x] 포괄적 알림 모델 (Notification, ApprovalWorkflow, EmergencyAlert)
+  - [x] 실시간 WebSocket 통신 서비스
+  - [x] 승인 워크플로우 관리 (요청/승인/거부 프로세스)
+  - [x] 응급 상황 알림 브로드캐스트 시스템
+  - [x] 알림 큐 및 다중 채널 발송 (WebSocket, Email, SMS)
+  - [x] 권한 기반 알림 라우팅
+  - [x] Manual editing과 통합된 실시간 알림
 
 - [ ] **내보내기 & 공유**
   - [ ] PDF 생성 엔진

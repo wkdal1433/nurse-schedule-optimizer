@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import auth, employees, shifts, schedules, requests, wards, compliance, preferences, roles, patterns, manual_editing
+from app.api import auth, employees, shifts, schedules, requests, wards, compliance, preferences, roles, patterns, manual_editing, notifications, websocket
 from app.database.connection import engine
 from app.models import models
 from app.models import scheduling_models
@@ -35,6 +35,8 @@ app.include_router(preferences.router, prefix="/api/preferences", tags=["Prefere
 app.include_router(roles.router, prefix="/api/roles", tags=["Role Management"])
 app.include_router(patterns.router, prefix="/api/patterns", tags=["Pattern Validation"])
 app.include_router(manual_editing.router, prefix="/api/manual-editing", tags=["Manual Editing & Emergency"])
+app.include_router(notifications.router, prefix="/api", tags=["Notifications & Approval"])
+app.include_router(websocket.router, prefix="/api", tags=["WebSocket Real-time"])
 
 @app.get("/")
 async def root():

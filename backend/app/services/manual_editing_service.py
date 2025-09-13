@@ -10,7 +10,11 @@ from app.models.scheduling_models import Schedule, ShiftAssignment
 from app.services.compliance_service import ComplianceService
 from app.services.pattern_validation_service import PatternValidationService
 from app.services.role_assignment_service import RoleAssignmentService
+from app.services.websocket_service import websocket_notification_service
+from app.services.notification_service import NotificationService
+from app.models.notification_models import NotificationType, NotificationPriority
 import logging
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -246,6 +250,11 @@ class ManualEditingService:
             
             # 변경 후 스케줄 점수 재계산
             new_score = self._recalculate_schedule_score(db, assignment.schedule_id)
+            
+            # 근무 변경 알림 전송
+            self._send_shift_change_notification(
+                db, assignment, original_data, override, admin_id
+            )
             
             return {
                 'success': True,
@@ -787,10 +796,133 @@ class ManualEditingService:
     ):
         """응급 상황 알림 대기열 추가"""
         try:
-            # 알림 시스템에 메시지 추가 (실제 구현에서는 Notification 모델 및 큐 시스템 필요)
-            logger.info(f"응급 알림 대기열 추가 - 대상: {employee_ids}, 근무: {assignment.id}, 사유: {reason}")
+            notification_service = NotificationService()
+            
+            for employee_id in employee_ids:
+                # 데이터베이스 알림 생성
+                notification_service.create_notification(
+                    db=db,
+                    recipient_id=employee_id,
+                    notification_type=NotificationType.EMERGENCY_REQUEST,
+                    title="긴급 근무 배정 요청",
+                    message=f"응급 상황으로 인한 근무 변경이 있습니다.\n사유: {reason}\n날짜: {assignment.shift_date.date()}\n근무: {assignment.shift_type}",
+                    priority=NotificationPriority.URGENT,
+                    ward_id=assignment.schedule.ward_id,
+                    related_data={
+                        'assignment_id': assignment.id,
+                        'shift_type': assignment.shift_type,
+                        'shift_date': str(assignment.shift_date.date()),
+                        'reason': reason
+                    }
+                )
+            
+            # 실시간 WebSocket 알림 전송
+            asyncio.create_task(self._send_realtime_emergency_alert(
+                assignment.schedule.ward_id, assignment, reason
+            ))
+            
+            logger.info(f"응급 알림 발송 완료 - 대상: {len(employee_ids)}명, 근무: {assignment.id}")
+            
         except Exception as e:
-            logger.error(f"응급 알림 대기열 추가 중 오류: {str(e)}")
+            logger.error(f"응급 알림 발송 중 오류: {str(e)}")
+    
+    async def _send_realtime_emergency_alert(self, ward_id: int, assignment, reason: str):
+        """실시간 응급 알림 전송"""
+        try:
+            await websocket_notification_service.send_emergency_alert(
+                ward_id=ward_id,
+                alert_data={
+                    'title': '긴급 근무 변경',
+                    'message': f'응급 상황으로 인한 근무 배정 변경\n사유: {reason}',
+                    'assignment_id': assignment.id,
+                    'shift_date': str(assignment.shift_date.date()),
+                    'shift_type': assignment.shift_type,
+                    'reason': reason
+                },
+                severity="high"
+            )
+        except Exception as e:
+            logger.error(f"실시간 응급 알림 전송 실패: {str(e)}")
+    
+    def _send_shift_change_notification(
+        self, 
+        db: Session, 
+        assignment, 
+        original_data: Dict, 
+        is_override: bool = False,
+        admin_id: Optional[int] = None
+    ):
+        """근무 변경 알림 전송"""
+        try:
+            notification_service = NotificationService()
+            
+            # 변경된 직원에게 알림
+            if assignment.employee_id:
+                title = "근무 배정 변경" if not is_override else "근무 배정 변경 (관리자 오버라이드)"
+                message = f"근무 배정이 변경되었습니다.\n날짜: {assignment.shift_date.date()}\n변경된 근무: {assignment.shift_type}"
+                
+                if is_override and admin_id:
+                    message += f"\n관리자에 의한 변경"
+                
+                notification_service.create_notification(
+                    db=db,
+                    recipient_id=assignment.employee_id,
+                    notification_type=NotificationType.SHIFT_CHANGE_REQUEST,
+                    title=title,
+                    message=message,
+                    sender_id=admin_id,
+                    priority=NotificationPriority.HIGH if is_override else NotificationPriority.MEDIUM,
+                    ward_id=assignment.schedule.ward_id,
+                    related_data={
+                        'assignment_id': assignment.id,
+                        'original_employee_id': original_data.get('employee_id'),
+                        'new_employee_id': assignment.employee_id,
+                        'shift_date': str(assignment.shift_date.date()),
+                        'shift_type': assignment.shift_type,
+                        'is_override': is_override
+                    }
+                )
+            
+            # 이전 직원에게도 알림 (직원 변경의 경우)
+            if original_data.get('employee_id') and original_data['employee_id'] != assignment.employee_id:
+                notification_service.create_notification(
+                    db=db,
+                    recipient_id=original_data['employee_id'],
+                    notification_type=NotificationType.SHIFT_CHANGE_REQUEST,
+                    title="근무 배정 해제",
+                    message=f"기존 근무 배정이 해제되었습니다.\n날짜: {assignment.shift_date.date()}\n해제된 근무: {original_data.get('shift_type', '알 수 없음')}",
+                    sender_id=admin_id,
+                    priority=NotificationPriority.MEDIUM,
+                    ward_id=assignment.schedule.ward_id,
+                    related_data={
+                        'assignment_id': assignment.id,
+                        'shift_date': str(assignment.shift_date.date()),
+                        'removed_shift_type': original_data.get('shift_type'),
+                        'is_override': is_override
+                    }
+                )
+            
+            # 실시간 WebSocket 알림
+            affected_user_ids = [assignment.employee_id] if assignment.employee_id else []
+            if original_data.get('employee_id') and original_data['employee_id'] != assignment.employee_id:
+                affected_user_ids.append(original_data['employee_id'])
+            
+            if affected_user_ids:
+                asyncio.create_task(websocket_notification_service.send_shift_change_notification(
+                    affected_user_ids=affected_user_ids,
+                    change_data={
+                        'assignment_id': assignment.id,
+                        'shift_date': str(assignment.shift_date.date()),
+                        'shift_type': assignment.shift_type,
+                        'is_override': is_override,
+                        'ward_id': assignment.schedule.ward_id
+                    }
+                ))
+            
+            logger.info(f"근무 변경 알림 전송 완료 - assignment_id: {assignment.id}")
+            
+        except Exception as e:
+            logger.error(f"근무 변경 알림 전송 실패: {str(e)}")
     
     def _evaluate_shift_preference(self, db: Session, employee_id: int, shift_type: str, target_date: date) -> Dict:
         """선호도 기반 평가"""
