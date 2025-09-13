@@ -124,7 +124,7 @@ class ComplianceViolation(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # 관계 설정
-    schedule = relationship("app.models.scheduling_models.Schedule")
+    schedule = relationship("Schedule")
     employee = relationship("Employee")
 
 # 패턴 검증 관련 모델들
@@ -183,7 +183,7 @@ class PatternViolation(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # 관계 설정
-    schedule = relationship("app.models.scheduling_models.Schedule")
+    schedule = relationship("Schedule")
     employee = relationship("Employee")
     pattern = relationship("ShiftPattern")
     resolver = relationship("User", foreign_keys=[resolved_by])
@@ -248,9 +248,8 @@ class PatternRecommendation(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # 관계 설정
-    schedule = relationship("app.models.scheduling_models.Schedule")
+    schedule = relationship("Schedule")
     employee = relationship("Employee")
-    rule = relationship("ShiftRule")
 
 class PreferenceTemplate(Base):
     __tablename__ = "preference_templates"
@@ -348,7 +347,7 @@ class PreferenceScore(Base):
     
     # 관계 설정
     employee = relationship("Employee")
-    schedule = relationship("app.models.scheduling_models.Schedule")
+    schedule = relationship("Schedule")
 
 class RoleConstraint(Base):
     __tablename__ = "role_constraints"
@@ -454,7 +453,7 @@ class RoleViolation(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # 관계 설정
-    schedule = relationship("app.models.scheduling_models.Schedule")
+    schedule = relationship("Schedule")
     employee = relationship("Employee")
 
 # 패턴 검증 관련 모델들

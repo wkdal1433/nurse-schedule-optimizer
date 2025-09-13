@@ -5,7 +5,7 @@ interface ComplianceRulesProps {
   wardId?: number;
 }
 
-const ComplianceRules: React.FC<ComplianceRulesProps> = ({ wardId }) => {
+const ComplianceRules: React.FC<ComplianceRulesProps> = ({ wardId }: any) => {
   const [rules, setRules] = useState<ShiftRule[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingRule, setEditingRule] = useState<ShiftRule | null>(null);
@@ -42,7 +42,7 @@ const ComplianceRules: React.FC<ComplianceRulesProps> = ({ wardId }) => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     
@@ -62,7 +62,7 @@ const ComplianceRules: React.FC<ComplianceRulesProps> = ({ wardId }) => {
     }
   };
 
-  const handleEdit = (rule: ShiftRule) => {
+  const handleEdit = (rule: any) => {
     setEditingRule(rule);
     setFormData({ ...rule });
     setShowForm(true);

@@ -10,7 +10,7 @@ from app.models.notification_models import (
     NotificationType, NotificationPriority, ApprovalStatus
 )
 from app.models.models import User, Employee, Ward
-from app.models.scheduling_models import Shift
+from app.models.shift import Shift
 import logging
 import json
 

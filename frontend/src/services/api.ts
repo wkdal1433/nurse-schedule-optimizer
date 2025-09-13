@@ -319,6 +319,9 @@ export interface PatternValidationResult {
   violations: any[];
   pattern_score: number;
   recommendations: string[];
+  overall_score: number;
+  total_violations: number;
+  summary: string;
 }
 
 export interface FatigueAnalysis {

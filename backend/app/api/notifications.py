@@ -63,7 +63,7 @@ class ApprovalAction(BaseModel):
 
 class EmergencyAlertCreate(BaseModel):
     alert_type: str
-    severity: str = Field(..., regex="^(low|medium|high|critical)$")
+    severity: str = Field(..., pattern="^(low|medium|high|critical)$")
     ward_id: int
     title: str
     description: str
