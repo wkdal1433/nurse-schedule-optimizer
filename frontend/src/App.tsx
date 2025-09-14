@@ -3,6 +3,7 @@ import ComplianceRules from './components/ComplianceRules';
 import PreferenceManagement from './components/PreferenceManagement';
 import RoleManagement from './components/RoleManagement';
 import PatternValidation from './components/PatternValidation';
+import ApiTest from './components/ApiTest';
 import './App.css';
 
 function App() {
@@ -44,11 +45,17 @@ function App() {
           >
             스케줄 관리
           </button>
-          <button 
+          <button
             className={currentTab === 'reports' ? 'active' : ''}
             onClick={() => setCurrentTab('reports')}
           >
             리포트
+          </button>
+          <button
+            className={currentTab === 'apitest' ? 'active' : ''}
+            onClick={() => setCurrentTab('apitest')}
+          >
+            API 테스트
           </button>
         </nav>
       </header>
@@ -77,6 +84,9 @@ function App() {
             <h2>📊 리포트</h2>
             <p>곧 출시될 기능입니다.</p>
           </div>
+        )}
+        {currentTab === 'apitest' && (
+          <ApiTest />
         )}
       </main>
 

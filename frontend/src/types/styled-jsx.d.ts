@@ -1,7 +1,13 @@
+import * as React from 'react';
+
 declare module 'react' {
-  interface StyleHTMLAttributes<T> extends React.HTMLAttributes<T> {
-    jsx?: boolean
-    global?: boolean
+  namespace JSX {
+    interface IntrinsicElements {
+      style: React.DetailedHTMLProps<React.StyleHTMLAttributes<HTMLStyleElement> & {
+        jsx?: boolean;
+        global?: boolean;
+      }, HTMLStyleElement>;
+    }
   }
 }
 
