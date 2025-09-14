@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PreCheckDialog from './components/PreCheckDialog';
 
 interface Nurse {
   id: number;
@@ -32,6 +33,8 @@ const NurseScheduleApp: React.FC = () => {
   const [scheduleData, setScheduleData] = useState<ScheduleData[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isLoading, setIsLoading] = useState(false);
+  const [showPreCheckDialog, setShowPreCheckDialog] = useState(false);
+  const [pendingScheduleGeneration, setPendingScheduleGeneration] = useState(false);
 
   // 병동 데이터 (실제로는 백엔드에서 가져올 것)
   const wards: Ward[] = [
@@ -53,17 +56,41 @@ const NurseScheduleApp: React.FC = () => {
     setNurses([...nurses, newNurse]);
   };
 
-  // 근무표 생성
-  const generateSchedule = async () => {
+  // Pre-check 다이얼로그 열기
+  const openPreCheckDialog = () => {
     if (!selectedWard || nurses.length === 0) {
       alert('병동과 간호사를 먼저 설정해주세요.');
       return;
     }
+    setShowPreCheckDialog(true);
+  };
+
+  // Pre-check 완료 후 근무표 생성 진행
+  const proceedWithGeneration = async (forceGenerate: boolean = false) => {
+    if (!selectedWard) return;
 
     setIsLoading(true);
     try {
-      // 임시 근무표 데이터 생성 (실제로는 백엔드 알고리즘 호출)
-      const schedule: ScheduleData[] = [];
+      const currentDate = new Date();
+      const response = await fetch('http://localhost:8000/api/schedules/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ward_id: selectedWard.id,
+          year: currentDate.getFullYear(),
+          month: currentDate.getMonth() + 1,
+          force_generate: forceGenerate,
+          constraints: {}
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // 성공적으로 생성된 경우 스케줄 데이터 설정
+        const schedule: ScheduleData[] = [];
       const startDate = new Date(selectedDate);
 
       for (let i = 0; i < 30; i++) {
@@ -179,7 +206,7 @@ const NurseScheduleApp: React.FC = () => {
       <div className="setup-actions">
         <button
           className="ios-primary-button"
-          onClick={generateSchedule}
+          onClick={openPreCheckDialog}
           disabled={!selectedWard || nurses.length === 0 || isLoading}
         >
           {isLoading ? (
@@ -431,7 +458,7 @@ const NurseScheduleApp: React.FC = () => {
         </button>
         <button
           className="ios-secondary-button"
-          onClick={generateSchedule}
+          onClick={openPreCheckDialog}
           disabled={isLoading}
         >
           근무표 재생성

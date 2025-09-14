@@ -8,6 +8,7 @@ from ..database.connection import get_db
 from ..models.models import Employee, Ward, ShiftRequest
 from ..models.scheduling_models import Schedule
 from ..algorithms.scheduler import NurseScheduler
+from ..services.precheck_service import get_precheck_service
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -17,6 +18,11 @@ class ScheduleCreateRequest(BaseModel):
     month: int
     year: int
     constraints: Optional[dict] = {}
+    force_generate: Optional[bool] = False  # Pre-check 실패 시에도 강제 생성
+class PreCheckRequest(BaseModel):
+    ward_id: int
+    month: int
+    year: int
 
 class ScheduleResponse(BaseModel):
     id: int
@@ -28,19 +34,55 @@ class ScheduleResponse(BaseModel):
     status: str
     created_at: datetime
 
+@router.post("/precheck", response_model=dict)
+async def precheck_schedule_generation(
+    request: PreCheckRequest,
+    db: Session = Depends(get_db)
+):
+    """근무표 생성 전 사전 검증"""
+
+    precheck_service = get_precheck_service(db)
+    result = precheck_service.perform_precheck(
+        ward_id=request.ward_id,
+        year=request.year,
+        month=request.month
+    )
+
+    return {
+        "success": True,
+        "precheck_result": result.to_dict()
+    }
+
 @router.post("/generate", response_model=dict)
 async def generate_schedule(
     request: ScheduleCreateRequest,
     db: Session = Depends(get_db)
 ):
     """새로운 근무표 생성"""
-    
-    # 1. 병동 정보 확인
+
+    # 1. Pre-check 수행 (force_generate가 False인 경우만)
+    if not request.force_generate:
+        precheck_service = get_precheck_service(db)
+        precheck_result = precheck_service.perform_precheck(
+            ward_id=request.ward_id,
+            year=request.year,
+            month=request.month
+        )
+
+        if not precheck_result.is_valid:
+            return {
+                "success": False,
+                "message": "Pre-check failed. Schedule generation blocked.",
+                "precheck_result": precheck_result.to_dict(),
+                "force_generate_required": True
+            }
+
+    # 2. 병동 정보 확인
     ward = db.query(Ward).filter(Ward.id == request.ward_id).first()
     if not ward:
         raise HTTPException(status_code=404, detail="Ward not found")
     
-    # 2. 해당 병동의 직원들 조회
+    # 3. 해당 병동의 직원들 조회
     employees = db.query(Employee).filter(
         Employee.ward_id == request.ward_id,
         Employee.is_active == True
@@ -64,7 +106,7 @@ async def generate_schedule(
             }
         })
     
-    # 3. 해당 기간의 근무 요청사항 조회
+    # 4. 해당 기간의 근무 요청사항 조회
     start_date = datetime(request.year, request.month, 1)
     if request.month == 12:
         end_date = datetime(request.year + 1, 1, 1)
@@ -89,7 +131,7 @@ async def generate_schedule(
             "reason": req.reason
         })
     
-    # 4. 제약조건 설정 (병동 규칙 + 요청 제약조건)
+    # 5. 제약조건 설정 (병동 규칙 + 요청 제약조건)
     ward_rules = ward.shift_rules or {}
     constraints = {
         **ward_rules,
@@ -101,14 +143,14 @@ async def generate_schedule(
         }
     }
     
-    # 5. 스케줄러 실행
+    # 6. 스케줄러 실행
     try:
         scheduler = NurseScheduler(request.ward_id, request.month, request.year)
         schedule_result = scheduler.generate_schedule(
             employees_data, constraints, requests_data
         )
         
-        # 6. 데이터베이스에 저장
+        # 7. 데이터베이스에 저장
         new_schedule = Schedule(
             ward_id=request.ward_id,
             month=request.month,
@@ -250,6 +292,30 @@ async def delete_schedule(
     return {
         "success": True,
         "message": "Schedule deleted successfully"
+    }
+
+@router.get("/precheck/{ward_id}/{year}/{month}")
+async def get_precheck_result(
+    ward_id: int,
+    year: int,
+    month: int,
+    db: Session = Depends(get_db)
+):
+    """특정 병동/기간에 대한 Pre-check 결과 조회"""
+
+    precheck_service = get_precheck_service(db)
+    result = precheck_service.perform_precheck(
+        ward_id=ward_id,
+        year=year,
+        month=month
+    )
+
+    return {
+        "success": True,
+        "ward_id": ward_id,
+        "year": year,
+        "month": month,
+        "precheck_result": result.to_dict()
     }
 
 @router.get("/status")
