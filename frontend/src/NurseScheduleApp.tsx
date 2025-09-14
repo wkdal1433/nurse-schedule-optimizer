@@ -91,29 +91,30 @@ const NurseScheduleApp: React.FC = () => {
       if (result.success) {
         // 성공적으로 생성된 경우 스케줄 데이터 설정
         const schedule: ScheduleData[] = [];
-      const startDate = new Date(selectedDate);
+        const startDate = new Date(selectedDate);
 
-      for (let i = 0; i < 30; i++) {
-        const currentDate = new Date(startDate);
-        currentDate.setDate(startDate.getDate() + i);
+        for (let i = 0; i < 30; i++) {
+          const currentDate = new Date(startDate);
+          currentDate.setDate(startDate.getDate() + i);
 
-        const daySchedule: ScheduleData = {
-          date: currentDate.toISOString().split('T')[0],
-          nurses: {}
-        };
+          const daySchedule: ScheduleData = {
+            date: currentDate.toISOString().split('T')[0],
+            nurses: {}
+          };
 
-        // 각 간호사에게 근무 배정 (단순 로직)
-        nurses.forEach((nurse, index) => {
-          const shifts = ['DAY', 'EVENING', 'NIGHT', 'OFF'] as const;
-          const shift = shifts[(index + i) % 4];
-          daySchedule.nurses[nurse.id] = { shift, nurse };
-        });
+          // 각 간호사에게 근무 배정 (단순 로직)
+          nurses.forEach((nurse, index) => {
+            const shifts = ['DAY', 'EVENING', 'NIGHT', 'OFF'] as const;
+            const shift = shifts[(index + i) % 4];
+            daySchedule.nurses[nurse.id] = { shift, nurse };
+          });
 
-        schedule.push(daySchedule);
+          schedule.push(daySchedule);
+        }
+
+        setScheduleData(schedule);
+        setCurrentView('calendar');
       }
-
-      setScheduleData(schedule);
-      setCurrentView('calendar');
     } catch (error) {
       console.error('근무표 생성 실패:', error);
     } finally {
@@ -472,6 +473,16 @@ const NurseScheduleApp: React.FC = () => {
       {currentView === 'setup' && <SetupView />}
       {currentView === 'calendar' && <CalendarView />}
       {currentView === 'settings' && <SettingsView />}
+
+      {/* Pre-check 다이얼로그 */}
+      <PreCheckDialog
+        isOpen={showPreCheckDialog}
+        onClose={() => setShowPreCheckDialog(false)}
+        wardId={selectedWard?.id || 0}
+        year={new Date().getFullYear()}
+        month={new Date().getMonth() + 1}
+        onProceed={proceedWithGeneration}
+      />
 
       <style jsx>{`
         .nurse-schedule-app {
