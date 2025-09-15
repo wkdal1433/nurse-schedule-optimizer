@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import PreCheckDialog from './components/PreCheckDialog';
+import DraggableCalendar from './components/DraggableCalendar';
 
 interface Nurse {
   id: number;
@@ -308,9 +309,7 @@ const NurseScheduleApp: React.FC = () => {
   };
 
   const CalendarView = () => {
-    const days = getDaysInMonth(selectedDate);
     const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
-    const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
 
     return (
       <div className="calendar-container">
@@ -350,50 +349,14 @@ const NurseScheduleApp: React.FC = () => {
           </button>
         </div>
 
-        <div className="calendar-grid">
-          <div className="calendar-weekdays">
-            {dayNames.map(day => (
-              <div key={day} className="weekday">{day}</div>
-            ))}
-          </div>
-
-          <div className="calendar-days">
-            {days.map((date, index) => {
-              if (!date) {
-                return <div key={index} className="empty-day"></div>;
-              }
-
-              const currentDate = date as Date;
-              const daySchedule = getScheduleForDate(currentDate);
-              const isToday = currentDate.toDateString() === new Date().toDateString();
-
-              return (
-                <div key={currentDate.toISOString()} className={`calendar-day ${isToday ? 'today' : ''}`}>
-                  <div className="day-number">{currentDate.getDate()}</div>
-                  {daySchedule && (
-                    <div className="day-schedule">
-                      {Object.values(daySchedule.nurses).map((assignment, i) => (
-                        <div
-                          key={i}
-                          className={`schedule-item ${assignment.shift.toLowerCase()}`}
-                        >
-                          <div className="nurse-initial">
-                            {assignment.nurse.name.charAt(0)}
-                          </div>
-                          <div className="shift-type">
-                            {assignment.shift === 'DAY' ? 'D' :
-                             assignment.shift === 'EVENING' ? 'E' :
-                             assignment.shift === 'NIGHT' ? 'N' : '-'}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        {/* Drag & Drop 가능한 달력으로 교체 */}
+        <DraggableCalendar
+          scheduleId={1} // 임시 ID, 실제로는 생성된 스케줄 ID 사용
+          scheduleData={scheduleData}
+          nurses={nurses}
+          selectedDate={selectedDate}
+          onDateChange={setSelectedDate}
+        />
 
         <div className="schedule-legend">
           <div className="legend-item">
