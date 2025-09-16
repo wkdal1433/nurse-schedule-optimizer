@@ -266,7 +266,7 @@ export const useNurseSchedule = () => {
   }, [updateState]);
 
   // 개인 스케줄 보기
-  const showPersonalSchedule = useCallback((nurse: Nurse) => {
+  const showPersonalScheduleAction = useCallback((nurse: Nurse) => {
     updateState({
       selectedNurse: nurse,
       showPersonalSchedule: true
@@ -309,7 +309,7 @@ export const useNurseSchedule = () => {
     navigateDate,
     openPreCheckDialog,
     closePreCheckDialog,
-    showPersonalScheduleAction: showPersonalSchedule,
+    showPersonalScheduleAction,
     closePersonalSchedule,
     setNurseFilter,
     setSelectedDate,
